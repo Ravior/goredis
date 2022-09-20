@@ -1,15 +1,18 @@
 package dict
 
+// SimpleDict wraps a map, it is not thread safe
 type SimpleDict struct {
 	m map[string]interface{}
 }
 
-func NewSimpleDict() *SimpleDict {
+// CreateSimpleDict create a new map
+func CreateSimpleDict() *SimpleDict {
 	return &SimpleDict{
 		m: make(map[string]interface{}),
 	}
 }
 
+// Get returns the binding value and whether the key is exist
 func (dict *SimpleDict) Get(key string) (val interface{}, exists bool) {
 	val, ok := dict.m[key]
 	return val, ok
@@ -31,6 +34,26 @@ func (dict *SimpleDict) Put(key string, val interface{}) (result int) {
 		return 0
 	}
 	return 1
+}
+
+// PutIfAbsent puts value if the key is not exists and returns the number of updated key-value
+func (dict *SimpleDict) PutIfAbsent(key string, val interface{}) (result int) {
+	_, existed := dict.m[key]
+	if existed {
+		return 0
+	}
+	dict.m[key] = val
+	return 1
+}
+
+// PutIfExists puts value if the key is exist and returns the number of inserted key-value
+func (dict *SimpleDict) PutIfExists(key string, val interface{}) (result int) {
+	_, existed := dict.m[key]
+	if existed {
+		dict.m[key] = val
+		return 1
+	}
+	return 0
 }
 
 // Remove removes the key and return the number of deleted key-value
@@ -93,6 +116,7 @@ func (dict *SimpleDict) RandomDistinctKeys(limit int) []string {
 	return result
 }
 
+// Clear removes all keys in dict
 func (dict *SimpleDict) Clear() {
-	*dict = *NewSimpleDict()
+	*dict = *CreateSimpleDict()
 }

@@ -38,7 +38,7 @@ func mustOpen(fileName, dir string) (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error during make dir %s, err: %s", dir, err)
 	}
-	
+
 	f, err := os.OpenFile(dir+string(os.PathSeparator)+fileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("fail to open file, err: %s", err)

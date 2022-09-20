@@ -5,14 +5,14 @@ import "strconv"
 // SortedSet is a set which keys sorted by bound score
 type SortedSet struct {
 	dict     map[string]*Element
-	skiplist *skiplist
+	skiplist *skipList
 }
 
 // NwSortedSet make a new SortedSet
 func NwSortedSet() *SortedSet {
 	return &SortedSet{
 		dict:     make(map[string]*Element),
-		skiplist: makeSkiplist(),
+		skiplist: CreateSkipList(),
 	}
 }
 

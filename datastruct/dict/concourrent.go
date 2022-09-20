@@ -35,7 +35,8 @@ func computeCapacity(param int) (size int) {
 	return n + 1
 }
 
-func NewConcurrentDict(shardCount int) *ConcurrentDict {
+// CreateConcurrentDict create ConcurrentDict with the given shard count
+func CreateConcurrentDict(shardCount int) *ConcurrentDict {
 	shardCount = computeCapacity(shardCount)
 	table := make([]*shard, shardCount)
 	for i := 0; i < shardCount; i++ {
@@ -45,7 +46,8 @@ func NewConcurrentDict(shardCount int) *ConcurrentDict {
 	}
 	return &ConcurrentDict{
 		table:      table,
-		shardCount: 0,
+		count:      0,
+		shardCount: shardCount,
 	}
 }
 
@@ -75,6 +77,15 @@ func (dict *ConcurrentDict) getShard(index uint32) *shard {
 	return dict.table[index]
 }
 
+func (dict *ConcurrentDict) addCount() int32 {
+	return atomic.AddInt32(&dict.count, 1)
+}
+
+func (dict *ConcurrentDict) decreaseCount() int32 {
+	return atomic.AddInt32(&dict.count, -1)
+}
+
+// Get returns the binding value and whether the key is exist
 func (dict *ConcurrentDict) Get(key string) (val interface{}, exists bool) {
 	if dict == nil {
 		panic("dict is nil")
@@ -114,6 +125,43 @@ func (dict *ConcurrentDict) Put(key string, val interface{}) (result int) {
 	shard.m[key] = val
 	dict.addCount()
 	return 1
+}
+
+// PutIfAbsent puts value if the key is not exists and returns the number of updated key-value
+func (dict *ConcurrentDict) PutIfAbsent(key string, val interface{}) (result int) {
+	if dict == nil {
+		panic("dict is nil")
+	}
+	hashCode := fnv32(key)
+	index := dict.spread(hashCode)
+	shard := dict.getShard(index)
+	shard.mutex.Lock()
+	defer shard.mutex.Unlock()
+
+	if _, ok := shard.m[key]; ok {
+		return 0
+	}
+	shard.m[key] = val
+	dict.addCount()
+	return 1
+}
+
+// PutIfExists puts value if the key is exist and returns the number of inserted key-value
+func (dict *ConcurrentDict) PutIfExists(key string, val interface{}) (result int) {
+	if dict == nil {
+		panic("dict is nil")
+	}
+	hashCode := fnv32(key)
+	index := dict.spread(hashCode)
+	shard := dict.getShard(index)
+	shard.mutex.Lock()
+	defer shard.mutex.Unlock()
+
+	if _, ok := shard.m[key]; ok {
+		shard.m[key] = val
+		return 1
+	}
+	return 0
 }
 
 // Remove removes the key and return the number of deleted key-value
@@ -240,13 +288,5 @@ func (dict *ConcurrentDict) RandomDistinctKeys(limit int) []string {
 
 // Clear removes all keys in dict
 func (dict *ConcurrentDict) Clear() {
-	*dict = *NewConcurrentDict(dict.shardCount)
-}
-
-func (dict *ConcurrentDict) addCount() int32 {
-	return atomic.AddInt32(&dict.count, 1)
-}
-
-func (dict *ConcurrentDict) decreaseCount() int32 {
-	return atomic.AddInt32(&dict.count, -1)
+	*dict = *CreateConcurrentDict(dict.shardCount)
 }
